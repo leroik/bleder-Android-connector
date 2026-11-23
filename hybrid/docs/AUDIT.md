@@ -1,0 +1,7 @@
+# Аудит Phone Rotation
+
+Проверено по Git HEAD main и v1.4.0 `f55ed217d4a4f48eaa96005be233c8fc0e510fbd`. VERSION и манифест Blender совпадают. README описывает установку релизов. В истории доступны только VERSION, README, APK, ZIP и workflow публикации. Сборочных конфигураций Android и его исходников нет. APK содержит DEX, ресурсы, подпись и уведомления ZXing. aapt подтвердил applicationId com.leroik.phonerotation, versionName 1.4.0, minSdk 23 и targetSdk 35. Новый APK использует dev.hybrid.scanner. APK не декомпилировался для повторного использования.
+
+Код внутри ZIP содержит `receiver.py`, `video.py`, `camera_preview.py`, `__init__.py` и QR-генератор. Аддон принимает TCP с QR `br1:IPv4:port:token`, авторизует `hello token`; поддерживает `begin`, `begin-camera`, `move qx qy qz qw`, `stop`, `ping`. Видео использует второе соединение `video token` и PNG. Манифест заявляет Blender 4.2+. Сведения об Android UI, магнитометре и настройках осей не подтверждены исходным кодом.
+
+Интеграция: Scanner имеет собственный Android applicationId, Blender namespace и протокол H3S/1. QR сохраняет прежний сценарий спаривания, но использует другой префикс. Отдельный процесс Scan Engine. Ничего из APK или ZIP не требуется для запуска Scanner. Когда появятся исходники Phone Rotation, ScannerActivity можно встроить как отдельный экран, сохранив оба протокола. Ветка feature/hybrid-3d-scanner содержит добавления в hybrid/ и отдельную CI-сборку.

@@ -1,0 +1,58 @@
+name: Hybrid Scanner build and tests
+on:
+  push:
+    branches: [feature/hybrid-3d-scanner]
+  pull_request:
+    paths:
+      - hybrid/**
+      - .github/workflows/hybrid-scanner.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+      - run: gradle -p hybrid/android :app:assembleDebug
+      - run: |
+          apk=hybrid/android/app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$apk"
+          mv "$apk" HybridScanner-0.1.0-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HybridScanner-Android
+          path: HybridScanner-0.1.0-debug.apk
+  engine:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: hybrid
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - if: runner.os == 'Windows'
+        run: python -m pip install -r pc_engine/requirements-windows.lock -r tests/requirements.txt
+      - if: runner.os == 'Linux'
+        run: python -m pip install -r pc_engine/requirements.txt -r tests/requirements.txt
+      - run: python -m unittest discover -s tests -v
+      - run: python scripts/package.py --out dist
+      - if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HybridScanner-Desktop
+          path: hybrid/dist/*.zip

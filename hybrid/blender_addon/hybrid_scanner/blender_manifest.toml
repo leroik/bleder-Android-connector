@@ -1,0 +1,13 @@
+schema_version = "1.0.0"
+id = "hybrid_scanner"
+version = "0.1.0"
+name = "Hybrid 3D Scanner"
+tagline = "Preview RGB-D scans from the local Scan Engine"
+maintainer = "Hybrid Scanner contributors"
+type = "add-on"
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+network = "Connect to the local Scan Engine and fetch geometry"
+files = "Save or import a scan selected by the user"

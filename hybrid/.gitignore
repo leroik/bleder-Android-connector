@@ -1,0 +1,8 @@
+.venv/
+.kotlin/
+.gradle/
+__pycache__/
+local.properties
+build/
+scans/
+dist/

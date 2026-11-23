@@ -1,0 +1,12 @@
+{
+  "voxel": 0.02,
+  "truncation": 0.08,
+  "depth_min": 0.5,
+  "depth_max": 3.0,
+  "confidence": 96,
+  "integration_hz": 10,
+  "mesh_hz": 1,
+  "preview_faces": 12000,
+  "preview_points": 16000,
+  "max_blocks": 12000
+}
