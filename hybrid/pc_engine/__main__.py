@@ -62,7 +62,7 @@ def main():
                 frame.pose = camera_transform(pose)
             fusion.integrate(frame)
         fusion.export(args.output, args.output.suffix[1:])
-        print(f"{fusion.count}/{len(files)} frames integrated → {args.output}")
+        print(f"{fusion.count}/{len(files)} frames integrated. Export complete.")
         return
     token = secrets.token_urlsafe(32)
     host = args.host or lan_ip()
@@ -70,7 +70,10 @@ def main():
     qr = qrcode.QRCode(border=4)
     qr.add_data(code)
     qr.make(fit=True)
-    qr.print_ascii(tty=False)
+    try:
+        qr.print_ascii(tty=False)
+    except UnicodeEncodeError:
+        print("QR requires a UTF-8 terminal. Use the pairing code below.")
     print(f"Address: http://{host}:{args.port}\nPairing code: {code}\nToken: {token}\nValid for 12 hours.", flush=True)
     manager = ScanManager(args.data, settings)
     try:
