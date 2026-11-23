@@ -2,15 +2,19 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+val scannerSideBySide = providers.gradleProperty("scannerSideBySide").isPresent
+
 android {
     namespace = "dev.hybrid.scanner"
     compileSdk = 35
     defaultConfig {
-        applicationId = "dev.hybrid.scanner"
+        applicationId = if (scannerSideBySide) "dev.hybrid.scanner.qr" else "dev.hybrid.scanner"
+        resValue("string", "scanner_app_name",
+            if (scannerSideBySide) "Hybrid 3D Scanner QR" else "Hybrid 3D Scanner")
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

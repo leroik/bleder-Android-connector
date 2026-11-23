@@ -26,11 +26,6 @@ import com.google.ar.core.Frame
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.NotYetAvailableException
-import com.google.zxing.BinaryBitmap
-import com.google.zxing.PlanarYUVLuminanceSource
-import com.google.zxing.ReaderException
-import com.google.zxing.common.HybridBinarizer
-import com.google.zxing.qrcode.QRCodeReader
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -53,10 +48,10 @@ class ScannerActivity : Activity() {
     private var ar: Session? = null
     private var surfaceRunning = false
     private var installRequested = false
+    private var resumeRetries = 0
     @Volatile private var foreground = false
     @Volatile private var cameraReady = false
     @Volatile private var supportsDepth = false
-    @Volatile private var readQr = false
     @Volatile private var mode = "RGB"
     @Volatile private var active: ScanStore? = null
     @Volatile private var paired: ScanNetwork? = null
@@ -69,7 +64,6 @@ class ScannerActivity : Activity() {
     private var capturedAt = 0L
     private var depthPreviewAt = 0L
     private var attemptedTimestamp = 0L
-    private var qrAt = 0L
     private var previousDepth = 0L
     private var lastStatusAt = 0L
     private var currentCaptureId: String? = null
@@ -108,11 +102,7 @@ class ScannerActivity : Activity() {
         engine = label(engineLabel, 14)
         root.addView(engine)
         root.addView(row(button("QR") {
-            if (cameraReady) {
-                readQr = true
-                setMode("RGB")
-                toast("Наведите камеру на QR-код Scan Engine")
-            } else pairDialog()
+            openQr()
         }, button("Код ПК") { pairDialog() }, button("Сеансы") { showScans() }, button("О приложении") { about() }))
         val view = FrameLayout(this)
         surface = GLSurfaceView(this).apply {
@@ -184,6 +174,7 @@ class ScannerActivity : Activity() {
     override fun onResume() {
         super.onResume()
         foreground = true
+        resumeRetries = 0
         openCamera()
     }
 
@@ -244,6 +235,9 @@ class ScannerActivity : Activity() {
         } catch (error: Exception) {
             cameraReady = false
             trackingLabel = "ARCore: ${error.javaClass.simpleName}"
+            if (error is com.google.ar.core.exceptions.CameraNotAvailableException && resumeRetries++ < 5) {
+                surface.postDelayed({ openCamera() }, 250)
+            }
             refresh()
         }
     }
@@ -339,6 +333,15 @@ class ScannerActivity : Activity() {
             .setNegativeButton("Отмена", null).show()
     }
 
+    @Suppress("DEPRECATION")
+    private fun openQr() {
+        if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            startActivityForResult(Intent(this, QrActivity::class.java), 102)
+        } else {
+            pairDialog()
+        }
+    }
+
     private fun connect(text: String) {
         try {
             val pair = Pairing.parse(text)
@@ -378,25 +381,6 @@ class ScannerActivity : Activity() {
                 "Tracking" else "Tracking: ${frame.camera.trackingFailureReason.name}"
             lastStatusAt = now
             runOnUiThread { refresh() }
-        }
-        if (readQr && now-qrAt >= 350) {
-            qrAt = now
-            try {
-                frame.acquireCameraImage().use { image ->
-                    val w = image.width
-                    val h = image.height
-                    val pixels = plane(image, 0, w, h)
-                    val side = minOf(w, h)
-                    val source = PlanarYUVLuminanceSource(pixels, w, h, (w-side)/2, (h-side)/2, side, side, false)
-                    val result = QRCodeReader().decode(BinaryBitmap(HybridBinarizer(source)))
-                    readQr = false
-                    runOnUiThread { connect(result.text) }
-                }
-            } catch (_: ReaderException) {
-                // Keep looking while the user holds the code in frame.
-            } catch (_: NotYetAvailableException) {
-                // CPU image is not ready.
-            }
         }
         if (!supportsDepth || tracking != TrackingState.TRACKING) return
         val scan = active
@@ -712,6 +696,13 @@ class ScannerActivity : Activity() {
     @Deprecated("Platform result callback")
     override fun onActivityResult(request: Int, result: Int, data: Intent?) {
         super.onActivityResult(request, result, data)
+        if (request == 102) {
+            if (result == RESULT_OK && data != null) {
+                if (data.getBooleanExtra(QrActivity.MANUAL, false)) pairDialog()
+                else data.getStringExtra(QrActivity.CODE)?.let(::connect)
+            }
+            return
+        }
         val source = saveSource ?: return
         if (request != 101 || result != RESULT_OK) return
         val uri = data?.data ?: return
